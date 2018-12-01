@@ -345,7 +345,6 @@ if __name__ == '__main__':
                         ylim_w=(-0.03, 0.41))
         if j==0: figvary=fig_b
 
-    print ('vary str should be b', varystr)
 # ============ Plot how peak of power spectrum varies with b ===================
     for j in range(l_b):
         omega_max = omega_max_b[j]/max(omega_max_b)
@@ -372,15 +371,15 @@ if __name__ == '__main__':
         
         fig_v = plot_brems_rad(nb, v0, dWdw=dWdw, omega=omega, newfig=newfig, 
                         plotspectrum=True, xlim_w=xlim, panel=False, 
-                        omega_v=omega_max, ylim_w=(-0.03, 0.14))
+                        omega_v=omega_max, ylim_w=(-0.03, 0.14), varystr=varystr)
         if j==0: figvary=fig_v
-    print ('vary str should be v0', varystr)
+        
 # ============ Plot how peak of power spectrum varies with v0 ==================
     for j in range(l_v):
         omega_max = omega_max_v[j]/max(omega_max_v)
         plot_brems_rad(b=b, v=v[j], omega_max=omega_max, plotvariation=True, 
-                   savefig=savefig, figure=figvary, varyparam=v[j], 
-                   varyaxes=[0.45, 0.18, 0.17, 0.17], varystr=varystr)
+                    savefig=savefig, figure=figvary, varyparam=v[j], 
+                    varyaxes=[0.45, 0.18, 0.17, 0.17], varystr=varystr)
 
     print ('===> Radiation power spectrum varying initial velocity plots '
             'saved to \'3_spec_vary_v.png\' ')
