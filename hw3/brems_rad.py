@@ -27,6 +27,7 @@ def calc_brems_rad(n, r0, v0, dt, nb):
 
     # Find the power spectrum
     dWdw = find_spec(a_w, dt, r0, v0, ax, ay, t)
+
     freq = 1/t
     
     return dWdw, freq, t, x, y, vx, vy, ax, ay, fx, fy
@@ -57,33 +58,29 @@ def find_path(n, dt, r0, v0):
     ax[-1] = ax[-2]; ay[-1] = ay[-2]; t[0]=t[1]; fx[-1]= fx[-2]; fy[-1]=fy[-2]
     return x, y, vx, vy, ax, ay, t, fx, fy
 
-
 def find_fft(ax, ay, n):
-    """ Calculates the FT of the acceleration."""
-
-    a = (ax, ay)
-    a_w = np.real(np.fft.fft2(a))
+    
+    a = np.sqrt(ax**2 + ay**2)
+    a_w = np.real(np.fft.fft(a))
     return a_w
 
 
 def find_spec(a_w, dt, r0, v0, ax, ay, t):
     """ Calculates the power spectrum of radiation. Not used."""
     # dWdw = 2 e^2 a(ω)^2 / (3 c^3 pi)
-    dWdw = 2 * q**2 * a_w**2 / (3 * np.pi * c**3)
-    
-    # Turn this into 1-d for plotting
-    dWdw_1d = np.zeros(n)
-    for m in range(n): dWdw_1d[m] = np.sqrt(dWdw[0][m]**2 + dWdw[1][m]**2)
-    return dWdw_1d
+
+    dWdw = 2 * q**2 * a_w**2 / (3 * np.pi * c**3)    
+    return dWdw
  
 
 def find_freq_peak(omega, xlim, dWdw):
     """ Finds the frequency at the peak of the power spectrum"""                
 
-    # Limit the range of frequencies                            
+    # Limit the range of frequencies       
+    if xlim is None: xlim = (omega[0], omega[1])     
     omega_lim_inds = np.where((omega >= xlim[0]) & (omega <= xlim[1]))[0]
     omega_lim = omega[omega_lim_inds]
-    dW_lim = dWdw[omega_lim_inds] # find the power at these frequencies
+    dW_lim = dWdw[np.where((omega >= xlim[0]) & (omega <= xlim[1]))[0]]
     # check if the peak of the spectrum is within default freq range
     if len(dW_lim)==0:
         print ('\n\n  *** Default frequency limits are outside of the max '\
@@ -91,17 +88,19 @@ def find_freq_peak(omega, xlim, dWdw):
                 'Try changing the default frequency range with \'--xlim <xmin> <xmax>\'' \
                 '\n Path is saved to 1_path.png. Exiting.')
         sys.exit()
-    omega_max = omega_lim[np.where(dW_lim == max(dW_lim))][0] # find omega_max
-    return omega_max
+        
+    dWdw_max = max(dW_lim)
+    omega_max = omega_lim[np.where(dW_lim == dWdw_max)][0] # find omega_max
+    return omega_max, dWdw_max
 
 
 def plot_brems_rad(nb=None, v0=None, n=None, x=None, y=None, vx=None, vy=None, 
                    ax=None, ay=None, fx=None, fy=None, t=None, dWdw=None, omega=None, 
                    b=None, v=None, omega_b=None, omega_v=None, newfig=True, 
                    plotpath=False, plotspectrum=False, plotvariation=False, 
-                   xlim_w=(1e13, 1.8e14), ylim_w=None, figure=None, omega_max=None,
+                   xlim_w=None, ylim_w=None, figure=None, omega_max=None,
                    ms=2, Z=1, pos=411, varystr=None, savefig=False, panel=True,
-                   varyparam=None):
+                   varyparam=None, varyaxes=[0.65, 0.42, 0.24, 0.24]):
     """
     Plots the path of the electron, the force along the path, the spectrum of 
     the emitted radiation, and the change in peak frequency with impact 
@@ -197,10 +196,15 @@ def plot_brems_rad(nb=None, v0=None, n=None, x=None, y=None, vx=None, vy=None,
         
         spec = plt.subplot(2, 3, 6)     # Power spectrum
         spec.set_title('Power Spectrum')
+        # normalize to max dWdw in the freq range of interest
+        omega_max, dWdw_max = find_freq_peak(omega, xlim_w, dWdw)
+        dWdw = dWdw/dWdw_max
+        
         spec.plot(omega, dWdw)
-        spec.set_ylabel('$dW/d\omega$')
+        spec.set_ylabel('$dW/d\omega/dW/d\omega _{max}$')
         spec.set_xlabel('$\omega[s^{-1}]$')
-        spec.set_xlim(xlim_w)
+        if xlim_w is not None: spec.set_xlim(xlim_w)
+        spec.set_ylim(-0.1, 1.1)
 
         plt.subplots_adjust(hspace=0.4, wspace=0.4)
         
@@ -221,7 +225,8 @@ def plot_brems_rad(nb=None, v0=None, n=None, x=None, y=None, vx=None, vy=None,
 
         plt.plot(omega, dWdw, label=leglabel)
         plt.ylabel('$dW/d\omega/dW/d\omega _{max}$')
-        plt.xlim(xlim_w)        
+        if xlim_w is not None: plt.xlim(xlim_w)
+        if ylim_w is not None: plt.ylim(ylim_w)
         plt.xlabel('$\omega[s^{-1}]$')
         plt.legend(numpoints=1, loc=1, fontsize='small')
 
@@ -229,7 +234,7 @@ def plot_brems_rad(nb=None, v0=None, n=None, x=None, y=None, vx=None, vy=None,
 
 
     if plotvariation:
-        l, b, w, h = [0.65, 0.42, 0.24, 0.24] # adding an inset axis
+        l, b, w, h = varyaxes # adding an inset axis
         axvary = figure.add_axes([l, b, w, h])
 
         if varystr == 'impact parameter': 
@@ -277,7 +282,7 @@ if __name__ == '__main__':
                         (vx(0), vy(0))' )
     parser.add_argument('--n', action='store', default=12000,
                         type=int, help='Enter number of steps (int)' )
-    parser.add_argument('--xlim', nargs='+', action='store', default=[8.3375e10, 8.365e10],
+    parser.add_argument('--xlim', nargs='+', action='store', default=[4.5e13,1.4e14],#[2.76e13,8e13],#[8.3375e10, 8.365e10],
                         type=float, help='Enter limits of frequency axis \
                         --xlim min max' )
     args = parser.parse_args()
@@ -303,14 +308,14 @@ if __name__ == '__main__':
     dWdw, omega, t, x, y, vx, vy, ax, ay, fx, fy = calc_brems_rad(n, r0, v0, dt, nb)
 
     # trim dWdw and omega to discard most zero values of the spectrum
-    dWdw = dWdw[-int(0.01*n):-1]; omega = omega[-int(0.01*n):-1]
+    # dWdw = dWdw[-int(0.01*n):-1]; omega = omega[-int(0.01*n):-1]
     
     
 # =================== Plot path, velocity, and acceleration ====================
 
     print ('... Plotting the path ...')
-    plot_brems_rad(nb, v0, n, x, y, vx, vy, ax, ay, fx, fy, t=t, dWdw=dWdw, 
-                    omega=omega, savefig=savefig, xlim_w=xlim, plotpath=True)
+    plot_brems_rad(nb, v0, n, x, y, vx, vy, ax, ay, fx, fy, t, dWdw, omega, 
+                    savefig=savefig, xlim_w=xlim, plotpath=True)
 
     print ('===> Electron path plots saved to \'1_path_spectrum.png\' \n')
     
@@ -331,16 +336,16 @@ if __name__ == '__main__':
         r0 = (nb[0]*a0, b[j]*a0)
         dWdw, omega, t, x, y, vx, vy, ax, ay, fx, fy = calc_brems_rad(n, r0, v0, dt, nb)
 
-        # trim dWdw and omega to discard most zero values of the spectrum
-        dWdw = dWdw[-int(0.01*n):-1]; omega = omega[-int(0.01*n):-1]
-
-        omega_max = find_freq_peak(omega, xlim, dWdw) # get peak freq
+        omega_max, dWdw_max = find_freq_peak(omega, xlim, dWdw) # get peak freq
         omega_max_b.append(omega_max)
+
         fig_b = plot_brems_rad((nb[0], b[j]), v0, dWdw=dWdw, omega=omega, 
                         newfig=newfig, plotspectrum=True, omega_b=omega_max, 
-                        xlim_w=xlim, varystr=varystr, savefig=savefig)
+                        xlim_w=xlim, varystr=varystr, savefig=savefig,
+                        ylim_w=(-0.03, 0.41))
         if j==0: figvary=fig_b
 
+    print ('vary str should be b', varystr)
 # ============ Plot how peak of power spectrum varies with b ===================
     for j in range(l_b):
         omega_max = omega_max_b[j]/max(omega_max_b)
@@ -351,6 +356,7 @@ if __name__ == '__main__':
             ' \'2_spec_vary_b.png\'')
 
 
+    xlim_w = [4.5e13, 1.67e14]
     print ('\n... Plotting the power spectrum, varying v0 ...')
     omega_max_v=[]; varystr='initial velocity'
     for j in range(l_v):
@@ -360,19 +366,21 @@ if __name__ == '__main__':
         
         v0 = (v[j], v0[1])
         dWdw, omega, t, x, y, vx, vy, ax, ay, fx, fy = calc_brems_rad(n, r0, v0, dt, nb)
-        dWdw = dWdw[-int(0.01*n):-1]; omega = omega[-int(0.01*n):-1]
-        omega_max = find_freq_peak(omega, xlim, dWdw) # get peak freq
+        
+        omega_max, dWdw_max = find_freq_peak(omega, xlim, dWdw) # get peak freq
         omega_max_v.append(omega_max)
+        
         fig_v = plot_brems_rad(nb, v0, dWdw=dWdw, omega=omega, newfig=newfig, 
-                        plotspectrum=True, xlim_w=xlim, varystr=varystr,
-                        savefig=savefig, panel=False, omega_v=omega_max)
+                        plotspectrum=True, xlim_w=xlim, panel=False, 
+                        omega_v=omega_max, ylim_w=(-0.03, 0.14))
         if j==0: figvary=fig_v
-
+    print ('vary str should be v0', varystr)
 # ============ Plot how peak of power spectrum varies with v0 ==================
     for j in range(l_v):
         omega_max = omega_max_v[j]/max(omega_max_v)
         plot_brems_rad(b=b, v=v[j], omega_max=omega_max, plotvariation=True, 
-                   savefig=savefig, figure=figvary, varyparam=v[j], varystr=varystr)
+                   savefig=savefig, figure=figvary, varyparam=v[j], 
+                   varyaxes=[0.45, 0.18, 0.17, 0.17], varystr=varystr)
 
     print ('===> Radiation power spectrum varying initial velocity plots '
             'saved to \'3_spec_vary_v.png\' ')
