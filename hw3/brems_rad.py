@@ -100,7 +100,7 @@ def plot_brems_rad(nb=None, v0=None, n=None, x=None, y=None, vx=None, vy=None,
                    plotpath=False, plotspectrum=False, plotvariation=False, 
                    xlim_w=None, ylim_w=None, figure=None, omega_max=None,
                    ms=2, Z=1, pos=411, varystr=None, savefig=False, panel=True,
-                   varyparam=None, varyaxes=[0.65, 0.42, 0.24, 0.24]):
+                   varyparam=None, varyaxes=[0.67, 0.42, 0.22, 0.22]):
     """
     Plots the path of the electron, the force along the path, the spectrum of 
     the emitted radiation, and the change in peak frequency with impact 
@@ -214,7 +214,7 @@ def plot_brems_rad(nb=None, v0=None, n=None, x=None, y=None, vx=None, vy=None,
 
 
     if plotspectrum:
-        dWdw = dWdw/max(dWdw) # Normalize the spectrum for plotting
+        # dWdw = dWdw/max(dWdw) # Normalize the spectrum for plotting
 
         if newfig:
             fig2 = plt.figure(figsize=(8,8))
@@ -227,6 +227,7 @@ def plot_brems_rad(nb=None, v0=None, n=None, x=None, y=None, vx=None, vy=None,
         plt.ylabel('$dW/d\omega/dW/d\omega _{max}$')
         if xlim_w is not None: plt.xlim(xlim_w)
         if ylim_w is not None: plt.ylim(ylim_w)
+        plt.ylim(-0.1, 1.1)
         plt.xlabel('$\omega[s^{-1}]$')
         plt.legend(numpoints=1, loc=1, fontsize='small')
 
@@ -282,10 +283,11 @@ if __name__ == '__main__':
                         (vx(0), vy(0))' )
     parser.add_argument('--n', action='store', default=12000,
                         type=int, help='Enter number of steps (int)' )
-    parser.add_argument('--xlim', nargs='+', action='store', default=[4.5e13,1.4e14],#[2.76e13,8e13],#[8.3375e10, 8.365e10],
+    parser.add_argument('--xlim', nargs='+', action='store', default=[8.3381e10, 8.348e10],
                         type=float, help='Enter limits of frequency axis \
                         --xlim min max' )
     args = parser.parse_args()
+    #ylim = [0, 2e-8]
 
     if not args.savefig:
         print ('\nFigures will save in code directory \n')
@@ -322,7 +324,7 @@ if __name__ == '__main__':
     
 # ==== Plot power spectrum: vary impact parameter b and initial velocity v0 ====
 
-    b = np.linspace(350, 950, 5); l_b = len(b)
+    b = np.linspace(300, 1500, 5); l_b = len(b)
     v = np.linspace(1.7e7, 2.6e7, 5); l_v = len(v)
 
 
@@ -332,12 +334,13 @@ if __name__ == '__main__':
         newfig=False; savefig=False
         if j==0: newfig=True
         if j==l_b-1: savefig=True
-        
+        xlim=(8.33850e10, 8.348e10)
         r0 = (nb[0]*a0, b[j]*a0)
         dWdw, omega, t, x, y, vx, vy, ax, ay, fx, fy = calc_brems_rad(n, r0, v0, dt, nb)
 
         omega_max, dWdw_max = find_freq_peak(omega, xlim, dWdw) # get peak freq
         omega_max_b.append(omega_max)
+        dWdw = dWdw/dWdw_max # normalize spectrum
 
         fig_b = plot_brems_rad((nb[0], b[j]), v0, dWdw=dWdw, omega=omega, 
                         newfig=newfig, plotspectrum=True, omega_b=omega_max, 
@@ -362,12 +365,13 @@ if __name__ == '__main__':
         newfig=False; savefig=False
         if j==0: newfig=True
         if j==l_v-1: savefig=True
-        
+        xlim=(8.3370e10, 8.348e10)
         v0 = (v[j], v0[1])
         dWdw, omega, t, x, y, vx, vy, ax, ay, fx, fy = calc_brems_rad(n, r0, v0, dt, nb)
         
         omega_max, dWdw_max = find_freq_peak(omega, xlim, dWdw) # get peak freq
         omega_max_v.append(omega_max)
+        dWdw = dWdw/dWdw_max # normalize spectrum
         
         fig_v = plot_brems_rad(nb, v0, dWdw=dWdw, omega=omega, newfig=newfig, 
                         plotspectrum=True, xlim_w=xlim, panel=False, 
@@ -379,7 +383,7 @@ if __name__ == '__main__':
         omega_max = omega_max_v[j]/max(omega_max_v)
         plot_brems_rad(b=b, v=v[j], omega_max=omega_max, plotvariation=True, 
                     savefig=savefig, figure=figvary, varyparam=v[j], 
-                    varyaxes=[0.45, 0.18, 0.17, 0.17], varystr=varystr)
+                    varystr=varystr)#,varyaxes=[0.45, 0.18, 0.17, 0.17])
 
     print ('===> Radiation power spectrum varying initial velocity plots '
             'saved to \'3_spec_vary_v.png\' ')
